@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- Added integrated uninstall to the same `VLCZoomPanSetup.exe`.
+- Uninstall removes the plugin, cleans `extraintf=zoompan`, restores ZoomPan-modified VLC settings from the original backup when available, and refreshes the plugin cache.
+- Added a direct end-user installer download link to the README.
+
+
 ## 0.1.0
 
 Initial ZoomPan release.
