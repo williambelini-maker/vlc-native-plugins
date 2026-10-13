@@ -1,42 +1,43 @@
 # Uninstalling ZoomPan
 
-The current ZoomPan installer does not include an integrated uninstall option.
+ZoomPan can be removed with the **same installer used to install it**.
+
+## Recommended uninstall
+
+1. Close VLC completely.
+2. Run `VLCZoomPanSetup.exe` as administrator.
+3. Select the VLC folder containing `vlc.exe`.
+4. When asked what to do, choose **No / Desinstalar**.
+5. The installer removes `libzoompan_plugin.dll`, removes `zoompan` from `extraintf`, restores the VLC settings changed by ZoomPan from the pre-install backup when available, and refreshes the VLC plugin cache.
+
+The uninstall is intentionally handled by the same single-file setup executable; ZoomPan does not install a background uninstaller or resident service.
 
 ## Manual removal
 
+If the setup executable is no longer available:
+
 1. Close VLC completely.
-2. Open the VLC installation directory.
-3. Delete:
+2. Delete:
 
 ```text
-plugins\control\libzoompan_plugin.dll
+<VLC folder>\plugins\control\libzoompan_plugin.dll
 ```
 
-4. Open the current user's VLC configuration file:
+3. Open:
 
 ```text
 %APPDATA%\vlc\vlcrc
 ```
 
-5. Remove `zoompan` from the `extraintf=` setting. If `zoompan` is the only extra interface, leave the setting empty or restore your previous value.
-6. If you want to restore the configuration exactly as it was before the first ZoomPan installation, use the backup created by the installer:
+4. Remove `zoompan` from the `extraintf=` setting.
+5. The installer's pre-ZoomPan configuration backup is stored under:
 
 ```text
-%LOCALAPPDATA%\VLCZoomPan\backup
+%LOCALAPPDATA%\VLCZoomPan\backup\vlcrc.before-zoompan
 ```
 
-The installer also creates a one-time pre-ZoomPan VLC configuration backup named:
+6. Refresh VLC's plugin cache with `vlc-cache-gen.exe` when available, or remove VLC's generated `plugins.dat` so VLC rebuilds it.
 
-```text
-vlcrc.before-zoompan
-```
+## Important note about configuration restore
 
-7. Start VLC normally.
-
-## Plugin cache
-
-If VLC still lists the removed plugin, refresh the plugin cache using VLC's `vlc-cache-gen.exe` when available, or remove VLC's generated `plugins.dat` cache so VLC rebuilds it on the next scan.
-
-## Notes
-
-Removing the DLL disables ZoomPan itself. Restoring the previous VLC configuration also removes the ZoomPan-specific hotkey/config changes made during installation.
+The integrated uninstaller restores only the ZoomPan-related VLC settings it changed, using the original backup when available. This avoids replacing the user's entire current VLC configuration just to remove the plugin.
