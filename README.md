@@ -33,13 +33,15 @@ ZoomPan is implemented as a native VLC **interface module**. The plugin loads in
 
 The project is designed to keep the behavior inside VLC rather than requiring an external mouse utility.
 
-## Download and install
+## Download for Windows
 
-Download the latest release:
+**You do not need to clone this repository or build anything.**
 
-**[VLCZoomPanSetup.exe — latest release](https://github.com/williambelini-maker/vlc-native-plugins/releases/latest)**
+### [Download VLCZoomPanSetup.exe](https://github.com/williambelini-maker/vlc-native-plugins/releases/latest/download/VLCZoomPanSetup.exe)
 
-Run the installer as administrator and select the folder that contains `vlc.exe`.
+That is the end-user installer. The source-code tree intentionally does not contain generated `.exe` or `.dll` binaries; downloadable binaries are published under **GitHub Releases**.
+
+Run `VLCZoomPanSetup.exe` as administrator and select the folder that contains `vlc.exe`.
 
 The installer:
 
@@ -75,9 +77,9 @@ See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 - Other VLC 3.x x64 versions may work, but are not marked validated until tested.
 - **VLC 4.x is not supported** by the current release.
 - The current installer is **not digitally signed**, so Windows SmartScreen may show an "unknown publisher" or reputation warning even though the file is downloadable and executable.
-- The current installer does **not** include an integrated uninstaller.
+- The installer includes an **integrated uninstall flow**: run the same `VLCZoomPanSetup.exe` again and choose **No / Desinstalar**.
 
-To remove ZoomPan manually, see [docs/UNINSTALL.md](docs/UNINSTALL.md).
+See [docs/UNINSTALL.md](docs/UNINSTALL.md) for removal details.
 
 ## Guides
 
