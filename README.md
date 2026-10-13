@@ -19,6 +19,14 @@ No alternate VLC launcher is required. No background helper, Windows service, st
 
 If you searched for **VLC zoom with mouse wheel**, **VLC mouse zoom**, **VLC pan video with mouse**, or a **VLC zoom plugin for Windows**, this is the problem ZoomPan is designed to solve.
 
+## Why ZoomPan exists
+
+I wasn't satisfied with the existing ways to zoom and navigate video in VLC. The available solutions felt too static, awkward, or dependent on workarounds for something that should feel immediate.
+
+I wanted a more **dynamic, fluid, mouse-driven experience**: zoom with the wheel, grab the image directly, move it naturally, and reset it instantly — without leaving VLC or relying on a separate helper running in the background.
+
+ZoomPan was built to turn that idea into a native VLC workflow.
+
 ## ZoomPan
 
 ZoomPan is implemented as a native VLC **interface module**. The plugin loads inside the VLC process and uses VLC's own scale-factor controls for zoom.
