@@ -69,6 +69,16 @@ It targets the VLC 3.x plugin ABI. Other VLC 3.x x64 builds are compatibility ca
 
 See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
+## Limitations and uninstall
+
+- **Validated:** VLC 3.0.21 x64 on Windows.
+- Other VLC 3.x x64 versions may work, but are not marked validated until tested.
+- **VLC 4.x is not supported** by the current release.
+- The current installer is **not digitally signed**, so Windows SmartScreen may show an "unknown publisher" or reputation warning even though the file is downloadable and executable.
+- The current installer does **not** include an integrated uninstaller.
+
+To remove ZoomPan manually, see [docs/UNINSTALL.md](docs/UNINSTALL.md).
+
 ## Guides
 
 - [How to zoom in VLC with the mouse wheel](docs/how-to-zoom-in-vlc-with-mouse-wheel.md)
