@@ -1,0 +1,205 @@
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$PluginPath
+)
+
+$ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$ExpectedPluginSha256 = "@PLUGIN_SHA256@"
+$NL = [Environment]::NewLine
+
+function Show-Error([string]$Message) {
+    [System.Windows.Forms.MessageBox]::Show(
+        $Message,
+        "VLC ZoomPan Setup",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Error
+    ) | Out-Null
+}
+
+function Show-Info([string]$Message) {
+    [System.Windows.Forms.MessageBox]::Show(
+        $Message,
+        "VLC ZoomPan Setup",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+    ) | Out-Null
+}
+
+function Get-VlcMachine([string]$Path) {
+    $fs = [System.IO.File]::OpenRead($Path)
+    $br = New-Object System.IO.BinaryReader($fs)
+    try {
+        $fs.Position = 0x3C
+        $peOffset = $br.ReadInt32()
+        $fs.Position = $peOffset
+        if ($br.ReadUInt32() -ne 0x00004550) {
+            throw "Arquivo nao possui assinatura PE valida."
+        }
+        return $br.ReadUInt16()
+    }
+    finally {
+        $br.Close()
+        $fs.Close()
+    }
+}
+
+function Set-Or-Add([string]$Text, [string]$Key, [string]$Value) {
+    $pattern = "(?m)^\s*#?\s*" + [regex]::Escape($Key) + "=.*$"
+    if ($Text -match $pattern) {
+        return [regex]::Replace($Text, $pattern, "$Key=$Value", 1)
+    }
+    return $Text.TrimEnd() + $NL + "$Key=$Value" + $NL
+}
+
+try {
+    if (-not (Test-Path -LiteralPath $PluginPath)) {
+        throw "Plugin interno nao foi encontrado no instalador."
+    }
+
+    $actualHash = (Get-FileHash -LiteralPath $PluginPath -Algorithm SHA256).Hash
+    if ($actualHash -ne $ExpectedPluginSha256) {
+        throw "A verificacao SHA-256 do plugin embutido falhou."
+    }
+
+    if (Get-Process -Name "vlc" -ErrorAction SilentlyContinue) {
+        Show-Error "Feche completamente o VLC antes de instalar."
+        exit 2
+    }
+
+    $defaultPath = $null
+    $candidate = Join-Path $env:ProgramFiles "VideoLAN\VLC"
+    if (Test-Path (Join-Path $candidate "vlc.exe")) {
+        $defaultPath = $candidate
+    }
+
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = "Escolha a pasta onde esta o vlc.exe"
+    $dialog.ShowNewFolderButton = $false
+    if ($defaultPath) {
+        $dialog.SelectedPath = $defaultPath
+    }
+
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+        exit 0
+    }
+
+    $VlcDir = $dialog.SelectedPath
+    $VlcExe = Join-Path $VlcDir "vlc.exe"
+
+    if (-not (Test-Path -LiteralPath $VlcExe)) {
+        throw ("Nao existe vlc.exe na pasta escolhida:" + $NL + $VlcDir)
+    }
+
+    $machine = Get-VlcMachine $VlcExe
+    if ($machine -ne 0x8664) {
+        throw ("Este instalador contem um plugin x64. O VLC escolhido nao e x64 (PE machine 0x{0:X4})." -f $machine)
+    }
+
+    $version = (Get-Item -LiteralPath $VlcExe).VersionInfo.FileVersion
+    if (-not $version) {
+        throw "Nao consegui ler a versao do vlc.exe."
+    }
+
+    if ($version -notmatch '^3\.') {
+        throw ("Este instalador foi validado para VLC 3.0.21 x64." + $NL + $NL +
+               "VLC encontrado: " + $version + $NL + $NL +
+               "Para evitar quebrar outro VLC, a instalacao foi cancelada.")
+    }
+
+    $PluginDir = Join-Path $VlcDir "plugins\control"
+    if (-not (Test-Path -LiteralPath $PluginDir)) {
+        throw "A pasta plugins\control nao existe no VLC escolhido."
+    }
+
+    $PluginDest = Join-Path $PluginDir "libzoompan_plugin.dll"
+
+    $BackupRoot = Join-Path $env:LOCALAPPDATA "VLCZoomPan\backup"
+    New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
+
+    $CfgDir = Join-Path $env:APPDATA "vlc"
+    $Cfg = Join-Path $CfgDir "vlcrc"
+    New-Item -ItemType Directory -Force -Path $CfgDir | Out-Null
+
+    $CfgBackup = Join-Path $BackupRoot "vlcrc.before-zoompan"
+    if ((Test-Path -LiteralPath $Cfg) -and -not (Test-Path -LiteralPath $CfgBackup)) {
+        Copy-Item -LiteralPath $Cfg -Destination $CfgBackup -Force
+    }
+
+    if (Test-Path -LiteralPath $PluginDest) {
+        $answer = [System.Windows.Forms.MessageBox]::Show(
+            "O ZoomPan ja existe neste VLC." + $NL + $NL + "Deseja reinstalar/atualizar?",
+            "VLC ZoomPan Setup",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question
+        )
+        if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) {
+            exit 0
+        }
+    }
+
+    Copy-Item -LiteralPath $PluginPath -Destination $PluginDest -Force
+
+    if (Test-Path -LiteralPath $Cfg) {
+        $text = Get-Content -LiteralPath $Cfg -Raw
+    } else {
+        $text = "[core]" + $NL
+    }
+
+    $text = Set-Or-Add $text "hotkeys-y-wheel-mode" "0"
+    $text = Set-Or-Add $text "key-zoom-original" "Ctrl+Alt+0"
+    $text = Set-Or-Add $text "key-incr-scalefactor" "Ctrl+Mouse Wheel Up"
+    $text = Set-Or-Add $text "key-decr-scalefactor" "Ctrl+Mouse Wheel Down"
+    $text = Set-Or-Add $text "key-subtitle-text-scale-up" ""
+    $text = Set-Or-Add $text "key-subtitle-text-scale-down" ""
+    $text = Set-Or-Add $text "autoscale" "0"
+    $text = Set-Or-Add $text "zoom" "1.000000"
+
+    $extraPattern = "(?m)^\s*#?\s*extraintf=(.*)$"
+    $extraMatch = [regex]::Match($text, $extraPattern)
+    if ($extraMatch.Success) {
+        $items = @()
+        $existing = $extraMatch.Groups[1].Value.Trim()
+        if ($existing) {
+            $items = $existing.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+        }
+        if ($items -notcontains "zoompan") {
+            $items += "zoompan"
+        }
+        $newExtra = "extraintf=" + ($items -join ",")
+        $text = [regex]::Replace($text, $extraPattern, $newExtra, 1)
+    } else {
+        $text = $text.TrimEnd() + $NL + "extraintf=zoompan" + $NL
+    }
+
+    Set-Content -LiteralPath $Cfg -Value $text -Encoding UTF8
+
+    $CacheGen = Join-Path $VlcDir "vlc-cache-gen.exe"
+    if (Test-Path -LiteralPath $CacheGen) {
+        $p = Start-Process -FilePath $CacheGen -ArgumentList @((Join-Path $VlcDir "plugins")) -Wait -PassThru -WindowStyle Hidden
+        if ($p.ExitCode -ne 0) {
+            throw "vlc-cache-gen falhou com codigo $($p.ExitCode)."
+        }
+    } else {
+        $PluginsDat = Join-Path $VlcDir "plugins\plugins.dat"
+        if (Test-Path -LiteralPath $PluginsDat) {
+            Remove-Item -LiteralPath $PluginsDat -Force
+        }
+    }
+
+    $msg = "Instalacao concluida." + $NL + $NL +
+           "VLC: " + $version + " x64" + $NL +
+           "Pasta: " + $VlcDir + $NL + $NL +
+           "Agora abra o VLC normalmente." + $NL + $NL +
+           "Ctrl + roda = zoom" + $NL +
+           "Arrastar com botao esquerdo = pan" + $NL +
+           "Duplo clique na rodinha = reset"
+    Show-Info $msg
+    exit 0
+}
+catch {
+    Show-Error $_.Exception.Message
+    exit 1
+}
