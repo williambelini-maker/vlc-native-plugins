@@ -9,7 +9,7 @@ $Dist = Join-Path $Repo "dist"
 $LlvmVersion = "20260602"
 $LlvmUrl = "https://github.com/mstorsjo/llvm-mingw/releases/download/20260602/llvm-mingw-20260602-ucrt-x86_64.zip"
 $LlvmSha = "3de3eda9377bbaf35f8c9001f190380f63b8ee981fa55d3ae9d7cce7c6ad7c70"
-$VlcUrl = "https://get.videolan.org/vlc/$VlcVersion/vlc-$VlcVersion.tar.xz"
+$VlcUrl = "https://download.videolan.org/pub/videolan/vlc/$VlcVersion/vlc-$VlcVersion.tar.xz"
 $VlcSha = "24dbbe1d7dfaeea0994d5def0bbde200177347136dbfe573f5b6a4cee25afbb0"
 
 function Get-VerifiedFile([string]$Url, [string]$Path, [string]$Sha256) {
