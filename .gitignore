@@ -1,0 +1,15 @@
+# Build outputs
+build/
+dist/
+.deps/
+*.o
+*.obj
+*.dll
+*.exe
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
