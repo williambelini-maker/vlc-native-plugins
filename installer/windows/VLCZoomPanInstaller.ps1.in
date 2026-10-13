@@ -54,18 +54,60 @@ function Set-Or-Add([string]$Text, [string]$Key, [string]$Value) {
     return $Text.TrimEnd() + $NL + "$Key=$Value" + $NL
 }
 
+function Restore-Key([string]$Text, [string]$BackupText, [string]$Key) {
+    $pattern = "(?m)^\s*#?\s*" + [regex]::Escape($Key) + "=.*$"
+    $backupMatch = [regex]::Match($BackupText, $pattern)
+
+    if ($backupMatch.Success) {
+        if ($Text -match $pattern) {
+            return [regex]::Replace($Text, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{
+                param($m)
+                return $backupMatch.Value
+            }, 1)
+        }
+        return $Text.TrimEnd() + $NL + $backupMatch.Value + $NL
+    }
+
+    return [regex]::Replace($Text, $pattern + "(?:\r?\n)?", "", 1)
+}
+
+function Remove-ZoomPanFromExtraIntf([string]$Text) {
+    $pattern = "(?m)^\s*#?\s*extraintf=(.*)$"
+    $match = [regex]::Match($Text, $pattern)
+    if (-not $match.Success) {
+        return $Text
+    }
+
+    $items = @()
+    $existing = $match.Groups[1].Value.Trim()
+    if ($existing) {
+        $items = $existing.Split(",") |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -and $_ -ne "zoompan" }
+    }
+
+    $replacement = "extraintf=" + ($items -join ",")
+    return [regex]::Replace($Text, $pattern, $replacement, 1)
+}
+
+function Refresh-VlcPluginCache([string]$VlcDir) {
+    $CacheGen = Join-Path $VlcDir "vlc-cache-gen.exe"
+    if (Test-Path -LiteralPath $CacheGen) {
+        $p = Start-Process -FilePath $CacheGen -ArgumentList @((Join-Path $VlcDir "plugins")) -Wait -PassThru -WindowStyle Hidden
+        if ($p.ExitCode -ne 0) {
+            throw "vlc-cache-gen falhou com codigo $($p.ExitCode)."
+        }
+    } else {
+        $PluginsDat = Join-Path $VlcDir "plugins\plugins.dat"
+        if (Test-Path -LiteralPath $PluginsDat) {
+            Remove-Item -LiteralPath $PluginsDat -Force
+        }
+    }
+}
+
 try {
-    if (-not (Test-Path -LiteralPath $PluginPath)) {
-        throw "Plugin interno nao foi encontrado no instalador."
-    }
-
-    $actualHash = (Get-FileHash -LiteralPath $PluginPath -Algorithm SHA256).Hash
-    if ($actualHash -ne $ExpectedPluginSha256) {
-        throw "A verificacao SHA-256 do plugin embutido falhou."
-    }
-
     if (Get-Process -Name "vlc" -ErrorAction SilentlyContinue) {
-        Show-Error "Feche completamente o VLC antes de instalar."
+        Show-Error "Feche completamente o VLC antes de instalar, atualizar ou remover o ZoomPan."
         exit 2
     }
 
@@ -106,7 +148,7 @@ try {
     if ($version -notmatch '^3\.') {
         throw ("Este instalador foi validado para VLC 3.0.21 x64." + $NL + $NL +
                "VLC encontrado: " + $version + $NL + $NL +
-               "Para evitar quebrar outro VLC, a instalacao foi cancelada.")
+               "Para evitar quebrar outro VLC, a operacao foi cancelada.")
     }
 
     $PluginDir = Join-Path $VlcDir "plugins\control"
@@ -115,15 +157,79 @@ try {
     }
 
     $PluginDest = Join-Path $PluginDir "libzoompan_plugin.dll"
-
     $BackupRoot = Join-Path $env:LOCALAPPDATA "VLCZoomPan\backup"
-    New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
-
     $CfgDir = Join-Path $env:APPDATA "vlc"
     $Cfg = Join-Path $CfgDir "vlcrc"
+    $CfgBackup = Join-Path $BackupRoot "vlcrc.before-zoompan"
+
+    $action = [System.Windows.Forms.MessageBox]::Show(
+        "O que deseja fazer?" + $NL + $NL +
+        "SIM  = instalar ou atualizar o ZoomPan" + $NL +
+        "NAO  = desinstalar o ZoomPan" + $NL +
+        "CANCELAR = sair sem alterar nada",
+        "VLC ZoomPan Setup",
+        [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+
+    if ($action -eq [System.Windows.Forms.DialogResult]::Cancel) {
+        exit 0
+    }
+
+    if ($action -eq [System.Windows.Forms.DialogResult]::No) {
+        $removedPlugin = $false
+        if (Test-Path -LiteralPath $PluginDest) {
+            Remove-Item -LiteralPath $PluginDest -Force
+            $removedPlugin = $true
+        }
+
+        if (Test-Path -LiteralPath $Cfg) {
+            $text = Get-Content -LiteralPath $Cfg -Raw
+            $backupText = ""
+            if (Test-Path -LiteralPath $CfgBackup) {
+                $backupText = Get-Content -LiteralPath $CfgBackup -Raw
+            }
+
+            foreach ($key in @(
+                "hotkeys-y-wheel-mode",
+                "key-zoom-original",
+                "key-incr-scalefactor",
+                "key-decr-scalefactor",
+                "key-subtitle-text-scale-up",
+                "key-subtitle-text-scale-down",
+                "autoscale",
+                "zoom"
+            )) {
+                $text = Restore-Key $text $backupText $key
+            }
+
+            $text = Remove-ZoomPanFromExtraIntf $text
+            Set-Content -LiteralPath $Cfg -Value $text -Encoding UTF8
+        }
+
+        Refresh-VlcPluginCache $VlcDir
+
+        $msg = "ZoomPan removido." + $NL + $NL +
+               "VLC: " + $version + " x64" + $NL +
+               "Pasta: " + $VlcDir + $NL + $NL +
+               $(if ($removedPlugin) { "A DLL do plugin foi removida." } else { "A DLL do plugin ja nao estava instalada." }) + $NL +
+               "As configuracoes alteradas pelo ZoomPan foram restauradas quando havia backup anterior."
+        Show-Info $msg
+        exit 0
+    }
+
+    if (-not (Test-Path -LiteralPath $PluginPath)) {
+        throw "Plugin interno nao foi encontrado no instalador."
+    }
+
+    $actualHash = (Get-FileHash -LiteralPath $PluginPath -Algorithm SHA256).Hash
+    if ($actualHash -ne $ExpectedPluginSha256) {
+        throw "A verificacao SHA-256 do plugin embutido falhou."
+    }
+
+    New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
     New-Item -ItemType Directory -Force -Path $CfgDir | Out-Null
 
-    $CfgBackup = Join-Path $BackupRoot "vlcrc.before-zoompan"
     if ((Test-Path -LiteralPath $Cfg) -and -not (Test-Path -LiteralPath $CfgBackup)) {
         Copy-Item -LiteralPath $Cfg -Destination $CfgBackup -Force
     }
@@ -175,19 +281,7 @@ try {
     }
 
     Set-Content -LiteralPath $Cfg -Value $text -Encoding UTF8
-
-    $CacheGen = Join-Path $VlcDir "vlc-cache-gen.exe"
-    if (Test-Path -LiteralPath $CacheGen) {
-        $p = Start-Process -FilePath $CacheGen -ArgumentList @((Join-Path $VlcDir "plugins")) -Wait -PassThru -WindowStyle Hidden
-        if ($p.ExitCode -ne 0) {
-            throw "vlc-cache-gen falhou com codigo $($p.ExitCode)."
-        }
-    } else {
-        $PluginsDat = Join-Path $VlcDir "plugins\plugins.dat"
-        if (Test-Path -LiteralPath $PluginsDat) {
-            Remove-Item -LiteralPath $PluginsDat -Force
-        }
-    }
+    Refresh-VlcPluginCache $VlcDir
 
     $msg = "Instalacao concluida." + $NL + $NL +
            "VLC: " + $version + " x64" + $NL +
@@ -195,7 +289,8 @@ try {
            "Agora abra o VLC normalmente." + $NL + $NL +
            "Ctrl + roda = zoom" + $NL +
            "Arrastar com botao esquerdo = pan" + $NL +
-           "Duplo clique na rodinha = reset"
+           "Duplo clique na rodinha = reset" + $NL + $NL +
+           "Para remover depois, execute este mesmo instalador e escolha NAO (desinstalar)."
     Show-Info $msg
     exit 0
 }
