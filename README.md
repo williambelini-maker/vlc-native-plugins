@@ -1,42 +1,74 @@
-# VLC Native Plugins
+# VLC Mouse Zoom & Pan Plugin for Windows
 
-Native, auditable VLC plugins for Windows, with reproducible builds and simple installers.
+**ZoomPan** is a native **VLC Media Player zoom plugin** for Windows. It adds **VLC mouse wheel zoom**, click-and-drag video panning, and instant zoom reset while running directly inside `vlc.exe`.
+
+[![Windows build](https://github.com/williambelini-maker/vlc-native-plugins/actions/workflows/windows-build.yml/badge.svg)](https://github.com/williambelini-maker/vlc-native-plugins/actions/workflows/windows-build.yml)
+[![Release](https://img.shields.io/github/v/release/williambelini-maker/vlc-native-plugins)](https://github.com/williambelini-maker/vlc-native-plugins/releases/latest)
 
 > Independent community project. Not affiliated with, endorsed by, or maintained by VideoLAN.
 
+## How to zoom in VLC with the mouse wheel
+
+After installing ZoomPan, open VLC normally:
+
+- **Ctrl + mouse wheel** — zoom in or out
+- **Hold left mouse button + drag** — pan the zoomed video
+- **Double-click the middle mouse button / wheel** — reset zoom and fit the video
+
+No alternate VLC launcher is required. No background helper, Windows service, startup monitor, or resident process is installed.
+
+If you searched for **VLC zoom with mouse wheel**, **VLC mouse zoom**, **VLC pan video with mouse**, or a **VLC zoom plugin for Windows**, this is the problem ZoomPan is designed to solve.
+
 ## ZoomPan
 
-The first plugin in this repository adds mouse-driven zoom navigation to VLC:
+ZoomPan is implemented as a native VLC **interface module**. The plugin loads inside the VLC process and uses VLC's own scale-factor controls for zoom.
 
-- **Ctrl + mouse wheel** — zoom in/out through VLC's native scale-factor hotkeys
-- **Left mouse drag** — pan the video while zoomed
-- **Middle-button double-click** — reset and fit the video
+The project is designed to keep the behavior inside VLC rather than requiring an external mouse utility.
 
-The plugin runs **inside `vlc.exe`** as a native VLC interface module. It does not install a background service, startup monitor, or external helper.
+## Download and install
 
-## Compatibility
+Download the latest release:
 
-The current build is validated on **VLC 3.0.21 x64 for Windows**.
+**[VLCZoomPanSetup.exe — latest release](https://github.com/williambelini-maker/vlc-native-plugins/releases/latest)**
 
-It targets the VLC 3.x plugin ABI. Other VLC 3.x x64 builds are compatibility candidates, but should be tested before being marked supported. VLC 4.x is not supported by this build.
-
-See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
-
-## Install
-
-Download `VLCZoomPanSetup.exe` from the Releases page, run it as administrator, and select the folder containing `vlc.exe`.
+Run the installer as administrator and select the folder that contains `vlc.exe`.
 
 The installer:
 
 1. validates the selected VLC executable and architecture;
-2. extracts the embedded native plugin into `plugins\control`;
-3. backs up the current user configuration;
-4. configures the required VLC hotkeys and `extraintf=zoompan`;
+2. installs `libzoompan_plugin.dll` under `plugins\control`;
+3. backs up the current user VLC configuration;
+4. configures VLC mouse-wheel zoom hotkeys and `extraintf=zoompan`;
 5. rebuilds the VLC plugin cache.
 
-After that, open VLC normally.
+After installation, launch **VLC Media Player normally**.
 
-## Build
+## Como dar zoom no VLC com o mouse
+
+Para quem procura **zoom no VLC com mouse**, **zoom no VLC com a roda do mouse** ou **arrastar vídeo ampliado no VLC**:
+
+- **Ctrl + roda do mouse** — aumenta ou diminui o zoom
+- **Botão esquerdo pressionado + arrastar** — move o vídeo ampliado
+- **Clique duplo no botão do meio / roda** — restaura o vídeo para caber na janela
+
+O plugin funciona dentro do próprio VLC, sem helper externo rodando em segundo plano.
+
+## Compatibility
+
+The current release is validated on **VLC 3.0.21 x64 for Windows**.
+
+It targets the VLC 3.x plugin ABI. Other VLC 3.x x64 builds are compatibility candidates, but should be tested before being marked supported. VLC 4.x is not supported by the current build.
+
+See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+
+## Guides
+
+- [How to zoom in VLC with the mouse wheel](docs/how-to-zoom-in-vlc-with-mouse-wheel.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Build from source](docs/BUILD.md)
+- [Compatibility](docs/COMPATIBILITY.md)
+
+## Build from source
 
 On Windows PowerShell:
 
@@ -46,7 +78,20 @@ pwsh .\scripts\windows\build.ps1
 
 The build script downloads pinned dependencies, verifies SHA-256 checksums, compiles the native plugin, embeds it into the single-file installer, and writes release artifacts to `dist\`.
 
-See [docs/BUILD.md](docs/BUILD.md).
+## Repository layout
+
+```text
+plugins/
+  zoompan/
+    src/VLCZoomPanPlugin.c
+installer/
+  windows/
+scripts/
+  windows/
+docs/
+.github/
+  workflows/
+```
 
 ## Credits
 
