@@ -67,7 +67,7 @@ O plugin funciona dentro do próprio VLC, sem helper externo rodando em segundo 
 
 The current release is validated on **VLC 3.0.21 x64 for Windows**.
 
-It targets the VLC 3.x plugin ABI. Other VLC 3.x x64 builds are compatibility candidates, but should be tested before being marked supported. VLC 4.x is not supported by the current build.
+The installer intentionally accepts only **VLC 3.0.21 x64**. The plugin targets the VLC 3.x plugin ABI, so other VLC 3.x x64 builds remain compatibility candidates, but they should be tested before being marked supported. VLC 4.x is not supported by the current build.
 
 See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 

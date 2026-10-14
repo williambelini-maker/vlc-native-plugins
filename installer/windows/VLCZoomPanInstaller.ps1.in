@@ -145,7 +145,7 @@ try {
         throw "Nao consegui ler a versao do vlc.exe."
     }
 
-    if ($version -notmatch '^3\.') {
+    if ($version -notmatch '^3\.0\.21(?:\.|$)') {
         throw ("Este instalador foi validado para VLC 3.0.21 x64." + $NL + $NL +
                "VLC encontrado: " + $version + $NL + $NL +
                "Para evitar quebrar outro VLC, a operacao foi cancelada.")

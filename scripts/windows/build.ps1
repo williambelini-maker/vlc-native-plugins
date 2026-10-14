@@ -68,6 +68,14 @@ if ($installerText -notmatch "@PLUGIN_SHA256@") { throw "Installer SHA token not
 $installerText = $installerText.Replace("@PLUGIN_SHA256@", $PluginSha)
 Set-Content -LiteralPath $Installer -Value $installerText -Encoding UTF8
 
+$tokens = $null
+$parseErrors = $null
+[System.Management.Automation.Language.Parser]::ParseFile($Installer, [ref]$tokens, [ref]$parseErrors) | Out-Null
+if ($parseErrors.Count -gt 0) {
+    $details = ($parseErrors | ForEach-Object { $_.Message }) -join [Environment]::NewLine
+    throw ("Generated installer PowerShell has syntax errors:" + [Environment]::NewLine + $details)
+}
+
 $SetupSrc = Join-Path $Repo "installer\\windows\\VLCZoomPanSetup.c"
 $Manifest = Join-Path $Repo "installer\\windows\\VLCZoomPanSetup.manifest"
 $Rc = Join-Path $Build "VLCZoomPanSetup.rc"

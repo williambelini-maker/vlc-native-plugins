@@ -9,6 +9,8 @@
 | VLC 3.x | Windows x86 | Not built |
 | VLC 4.x | Windows x64/x86 | Not supported by this build |
 
+The Windows installer intentionally installs only into **VLC 3.0.21 x64**. Other VLC 3.x x64 versions remain candidates for future validation rather than supported installer targets.
+
 ## What "validated" means
 
 The following behaviors were tested together on VLC 3.0.21 x64:
